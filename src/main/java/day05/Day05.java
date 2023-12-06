@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.*;
 
 public class Day05 {
-
     private static List<String> foodProductionMapsNamesList = new ArrayList<>();
     private static List<Long> seedsList = new ArrayList<>();
     private static Map<String, List<Conditions>> foodProductionMaps = new HashMap<>();
@@ -61,7 +60,7 @@ public class Day05 {
                 i++;
                 currentLine = inputLines.get(i);
                 while (!currentLine.isBlank()) {
-                    System.out.println("currentLine = " + currentLine);
+                    //System.out.println("currentLine = " + currentLine);
                     String[] lineAsArray = currentLine.split(" ");
                     long destination = Long.parseLong(lineAsArray[0].strip());
                     long source = Long.parseLong(lineAsArray[1].strip());
@@ -89,6 +88,10 @@ public class Day05 {
         return inputValue;
     }
 
+    private static boolean isInRange(final Conditions currentConditions, final long inputValue) {
+        return (inputValue >= currentConditions.getRightValue()) && (inputValue <= (currentConditions.getRightValue() + currentConditions.getLength()));
+    }
+
     private static long goThroughMap(String mapName, long inputValue) {
         long[] result = new long[1];
         result[0] = inputValue;
@@ -102,47 +105,49 @@ public class Day05 {
         return result[0];
     }
 
-    private static boolean isInRange(final Conditions currentConditions, final long inputValue) {
-        return (inputValue >= currentConditions.getRightValue()) && (inputValue <= (currentConditions.getRightValue() + currentConditions.getLength()));
-    }
-
     private static long partOne() {
         long result = 0;
         List<Long> lowestLocations = new ArrayList<>();
         seedsList.forEach(sedNumb -> {
-            System.out.println("sedNumb = " + sedNumb);
             long currentResult = goThroughMap("seed-to-soil map", sedNumb);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("soil-to-fertilizer map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("fertilizer-to-water map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("water-to-light map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("light-to-temperature map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("temperature-to-humidity map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             currentResult = goThroughMap("humidity-to-location map", currentResult);
-            System.out.println("currentResult = " + currentResult);
             lowestLocations.add(currentResult);
         });
 
         lowestLocations.sort(Collections.reverseOrder());
-        return lowestLocations.get(lowestLocations.size()-1);
+        return lowestLocations.get(lowestLocations.size() - 1);
     }
 
 
-    private static String partTwo() {
-        return "";
+    private static long partTwo() {
+        long result = Long.MAX_VALUE;
+        List<Long> lowestLocations = new ArrayList<>();
+        int numOfPairs = seedsList.size() / 2;
+        for (int i = 0; i < numOfPairs; i++) {
+            long start = seedsList.get(2 * i);
+            long length = seedsList.get(2 * i + 1) - 1;
+            for (long j = start; j <= (start + length); j++) {
+                long currentResult = goThroughMap("seed-to-soil map", j);
+                currentResult = goThroughMap("soil-to-fertilizer map", currentResult);
+                currentResult = goThroughMap("fertilizer-to-water map", currentResult);
+                currentResult = goThroughMap("water-to-light map", currentResult);
+                currentResult = goThroughMap("light-to-temperature map", currentResult);
+                currentResult = goThroughMap("temperature-to-humidity map", currentResult);
+                currentResult = goThroughMap("humidity-to-location map", currentResult);
+                if (currentResult < result) result = currentResult;
+            }
+        }
+        return result;
     }
 
     public static void main(String[] args) throws IOException {
         String pathToInputFile = "src/main/resources/day05/input.txt";
         List<String> inputLines = MyUtilities.getInputLines(pathToInputFile);
-//        inputLines.forEach(line -> {
-//            System.out.println("line = " + line);
-//        });
         generateFoodProductionMaps(inputLines);
 
         System.out.println("PART I = " + partOne());
