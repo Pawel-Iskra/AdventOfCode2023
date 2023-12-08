@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 
 public class CamelCards {
 
-    // handStrengths: Five of a kind,Four of a kind, Full house (3+2), Three of a kind,Two pair, One pain, high
     private static List<Character> cardsFromHighest = List.of('A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2');
     private static Map<String, Integer> handsMap = new HashMap<>();
     private static List<String> fives = new ArrayList<>();
@@ -37,7 +36,7 @@ public class CamelCards {
             if (firstChar == hand.charAt(i)) counter++;
         }
         if (counter < 4) {
-            counter = 0;
+            counter = 1;
             char lastChar = hand.charAt(length - 1);
             for (int i = length - 2; i >= 0; i--) {
                 if (lastChar == hand.charAt(i)) counter++;
@@ -53,10 +52,9 @@ public class CamelCards {
             list.add(c);
         }
         List<Character> sorted = list.stream().sorted().collect(Collectors.toList());
-        //System.out.println("sorted = " + sorted);
-        if (sorted.get(0) == sorted.get(1) && sorted.get(1) == sorted.get(2) && sorted.get(3) == sorted.get(4))
+        if (Objects.equals(sorted.get(0), sorted.get(1)) && Objects.equals(sorted.get(1), sorted.get(2)) && Objects.equals(sorted.get(3), sorted.get(4)))
             return true;
-        if (sorted.get(0) == sorted.get(1) && sorted.get(2) == sorted.get(3) && sorted.get(3) == sorted.get(4))
+        if (Objects.equals(sorted.get(0), sorted.get(1)) && Objects.equals(sorted.get(2), sorted.get(3)) && Objects.equals(sorted.get(3), sorted.get(4)))
             return true;
         return false;
     }
@@ -68,8 +66,10 @@ public class CamelCards {
             list.add(c);
         }
         List<Character> sorted = list.stream().sorted().collect(Collectors.toList());
-        if (sorted.get(0) == sorted.get(1) && sorted.get(1) == sorted.get(2)) return true;
-        if (sorted.get(4) == sorted.get(3) && sorted.get(3) == sorted.get(2)) return true;
+
+        if (Objects.equals(sorted.get(0), sorted.get(1)) && Objects.equals(sorted.get(1), sorted.get(2))) return true;
+        if (Objects.equals(sorted.get(1), sorted.get(2)) && Objects.equals(sorted.get(2), sorted.get(3))) return true;
+        if (Objects.equals(sorted.get(4), sorted.get(3)) && Objects.equals(sorted.get(3), sorted.get(2))) return true;
         return false;
     }
 
@@ -110,56 +110,227 @@ public class CamelCards {
             String[] lineAsArray = line.split(" ");
             String hand = lineAsArray[0];
             int bid = Integer.parseInt(lineAsArray[1]);
-            //System.out.println("hand = " + hand + " -> " + bid);
             handsMap.put(hand, bid);
             putToProperListType(hand);
         });
-//
-//        System.out.println("fives = " + fives);
-//        System.out.println("fours = " + fours);
-//        System.out.println("fulls = " + fulls);
-//        System.out.println("threes = " + threes);
-//        System.out.println("twoPairs = " + twoPairs);
-//        System.out.println("onePairs = " + onePairs);
-//        System.out.println("restHands = " + restHands);
+
+        Comparator<String> myComparator = Comparator.
+                comparing((String str) -> cardsFromHighest.indexOf(str.charAt(0)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(1)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(2)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(3)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(4)));
+
+        Collections.sort(fives, myComparator);
+        Collections.sort(fours, myComparator);
+        Collections.sort(fulls, myComparator);
+        Collections.sort(threes, myComparator);
+        Collections.sort(twoPairs, myComparator);
+        Collections.sort(onePairs, myComparator);
+        Collections.sort(restHands, myComparator);
     }
 
-    private static long partOne() {
-        long result = 0;
-        int numOfHands = handsMap.size();
-        Comparator<String> handCompareFirst = Comparator.comparing(hand -> cardsFromHighest.indexOf(hand.charAt(0)));
-        Comparator<String> handCompareSecond = Comparator.comparing(hand -> cardsFromHighest.indexOf(hand.charAt(1)));
-        Collections.sort(restHands, handCompareFirst);
-        Collections.sort(restHands, handCompareFirst);
+    private static int calculateValueForAList(List<String> handsList, int currentRank) {
+        int result = 0;
+        int numOfRestHands = handsList.size();
+        for (int i = numOfRestHands - 1; i >= 0; i--) {
+            String currentHand = handsList.get(i);
+            int currentHandBid = handsMap.get(currentHand);
+            int currentHandValue = currentRank * currentHandBid;
+            result += currentHandValue;
+            currentRank++;
+        }
+        return result;
+    }
 
-        System.out.println("\nSORTED:\n");
-//        System.out.println("fives = " + fives);
-//        System.out.println("fours = " + fours);
-//        System.out.println("fulls = " + fulls);
-//        System.out.println("threes = " + threes);
-//        System.out.println("twoPairs = " + twoPairs);
-//        System.out.println("onePairs = " + onePairs);
-        System.out.println("restHands = " + restHands);
+    private static int calculateJokers(String hand) {
+        return (int) hand.chars().filter(c -> c == 'J').count();
+    }
+
+    private static void optimizeFours() {
+        int numOfFours = fours.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = fours.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                fives.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            fours.remove(handToRemoveFromList);
+        }
+    }
+
+    private static void optimizeFulls() {
+        int numOfFours = fulls.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = fulls.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                fives.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            fulls.remove(handToRemoveFromList);
+        }
+    }
+
+    private static void optimizeThrees() {
+        int numOfFours = threes.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = threes.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                fours.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            threes.remove(handToRemoveFromList);
+        }
+    }
+
+    private static void optimizeTwoPairs() {
+        int numOfFours = twoPairs.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = twoPairs.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                if (calculateJokers(currentHand) == 2) fours.add(currentHand);
+                else fulls.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            twoPairs.remove(handToRemoveFromList);
+        }
+    }
+
+    private static void optimizeOnePairs() {
+        int numOfFours = onePairs.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = onePairs.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                threes.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            onePairs.remove(handToRemoveFromList);
+        }
+    }
+
+    private static void optimizeRestHands() {
+        int numOfFours = restHands.size();
+        List<String> handsToRemoveFromList = new ArrayList<>();
+        for (int i = 0; i < numOfFours; i++) {
+            String currentHand = restHands.get(i);
+            if (currentHand.contains("J")) {
+                handsToRemoveFromList.add(currentHand);
+                onePairs.add(currentHand);
+            }
+        }
+        for (String handToRemoveFromList : handsToRemoveFromList) {
+            restHands.remove(handToRemoveFromList);
+        }
+    }
+
+    private static long calculateResultForAllLists() {
+        long result = 0;
+        int currentHandRank = 1;
+        long currentResult = calculateValueForAList(restHands, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += restHands.size();
+        currentResult = calculateValueForAList(onePairs, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += onePairs.size();
+        currentResult = calculateValueForAList(twoPairs, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += twoPairs.size();
+        currentResult = calculateValueForAList(threes, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += threes.size();
+        currentResult = calculateValueForAList(fulls, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += fulls.size();
+        currentResult = calculateValueForAList(fours, currentHandRank);
+        result += currentResult;
+
+        currentHandRank += fours.size();
+        currentResult = calculateValueForAList(fives, currentHandRank);
+        result += currentResult;
 
         return result;
     }
 
-    private static long partTwo() {
-        long counter = 0;
+    private static void sortListsForPartOne() {
+        Comparator<String> myComparator = Comparator.
+                comparing((String str) -> cardsFromHighest.indexOf(str.charAt(0)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(1)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(2)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(3)))
+                .thenComparing(str -> cardsFromHighest.indexOf(str.charAt(4)));
 
-        return counter;
+        Collections.sort(fives, myComparator);
+        Collections.sort(fours, myComparator);
+        Collections.sort(fulls, myComparator);
+        Collections.sort(threes, myComparator);
+        Collections.sort(twoPairs, myComparator);
+        Collections.sort(onePairs, myComparator);
+        Collections.sort(restHands, myComparator);
     }
 
+    private static void sortListForPartTwo() {
+        List<Character> newCardsFromHighest = new ArrayList<>(cardsFromHighest);
+        newCardsFromHighest.remove(new Character('J'));
+        newCardsFromHighest.add('J');
+
+        Comparator<String> myComparator = Comparator.
+                comparing((String str) -> newCardsFromHighest.indexOf(str.charAt(0)))
+                .thenComparing(str -> newCardsFromHighest.indexOf(str.charAt(1)))
+                .thenComparing(str -> newCardsFromHighest.indexOf(str.charAt(2)))
+                .thenComparing(str -> newCardsFromHighest.indexOf(str.charAt(3)))
+                .thenComparing(str -> newCardsFromHighest.indexOf(str.charAt(4)));
+
+        Collections.sort(fives, myComparator);
+        Collections.sort(fours, myComparator);
+        Collections.sort(fulls, myComparator);
+        Collections.sort(threes, myComparator);
+        Collections.sort(twoPairs, myComparator);
+        Collections.sort(onePairs, myComparator);
+        Collections.sort(restHands, myComparator);
+    }
+
+    private static long partTwo() {
+        optimizeFours();
+        optimizeFulls();
+        optimizeThrees();
+        optimizeTwoPairs();
+        optimizeOnePairs();
+        optimizeRestHands();
+        sortListForPartTwo();
+        return calculateResultForAllLists();
+    }
+
+    private static long partOne() {
+        sortListsForPartOne();
+        return calculateResultForAllLists();
+    }
 
     public static void main(String[] args) throws IOException {
         String pathToInputFile = "src/main/resources/day07/input.txt";
         List<String> inputLines = MyUtilities.getInputLines(pathToInputFile);
-        inputLines.forEach(System.out::println);
         prepareHandsBeforePlay(inputLines);
 
         System.out.println("PART I = " + partOne());
-        System.out.println("\nPART II = " + partTwo());
-
-
+        System.out.println("PART II = " + partTwo());
     }
 }
